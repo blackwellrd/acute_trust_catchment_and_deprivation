@@ -8,7 +8,7 @@ output:
     toc: true
     number_sections: true
     toc_float:
-      collapsed: false
+      collapsed: true
       smooth_scroll: true
     css: "style.css"
 ---
@@ -180,7 +180,7 @@ sf_lsoa11 <- sf_lsoa11 %>% left_join(df_data, by = c('LSOA11CD' = 'lsoa11cd'))
 ```
 
 ## Local Acute Trust Catchment Areas
-```{r catchment_setup, echo = FALSE}
+```{r catchment_setup}
 # Filter for the local trusts
 sf_lsoa11 <- sf_lsoa11 %>% filter(org_code %in% c('RA4','RA9','RBZ','REF','RH5','RH8','RK9'))
 dir.create('./output/maps', showWarnings = FALSE, recursive = TRUE)
@@ -195,7 +195,7 @@ ggsave('./output/maps/map_ALL.png', map_ALL, height = 210, width = 297, units = 
 ```
 
 ### REF - Royal Cornwall Hospitals NHS Trust
-```{r catchment_REF, echo = FALSE}
+```{r catchment_REF}
 map_REF <- fnMap(
   sel_org_code = 'REF', sf = sf_lsoa11, 
   title = 'REF - Royal Cornwall Hospitals NHS Trust Catchment Area\n(Elective and Non-Elective)',
@@ -209,122 +209,127 @@ map_REF <- fnMap(
   title = 'REF - Royal Cornwall Hospitals NHS Trust Catchment Area\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
-map_REF
 ggsave('./output/maps/map_REF_zoomed.png', map_REF, height = 210, width = 297, units = 'mm')
+map_REF
 ```
 ### RK9	- University Hospitals Plymouth NHS Trust			
-```{r catchment_RK9, echo = FALSE}
+```{r catchment_RK9}
 map_RK9 <- fnMap(
   sel_org_code = 'RK9', sf = sf_lsoa11, 
   title = 'RK9 - University Hospitals Plymouth NHS Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RK9
-ggsave('./output/maps/map_RK9.png', map_RK9, height = 210, width = 297, units = 'mm')
 
-map_RK9 <- fnMap(
+map_RK9_zoomed <- fnMap(
   sel_org_code = 'RK9', sf = sf_lsoa11, 
   title = 'RK9 - University Hospitals Plymouth NHS Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
+
+ggsave('./output/maps/map_RK9.png', map_RK9, height = 210, width = 297, units = 'mm')
+ggsave('./output/maps/map_RK9_zoomed.png', map_RK9_zoomed, height = 210, width = 297, units = 'mm')
 map_RK9
-ggsave('./output/maps/map_RK9_zoomed.png', map_RK9, height = 210, width = 297, units = 'mm')
+map_RK9_zoomed
 ```
 
 ### RA9	- Torbay And South Devon NHS Foundation Trust			
-```{r catchment_RA9, echo = FALSE}
+```{r catchment_RA9}
 map_RA9 <- fnMap(
   sel_org_code = 'RA9', sf = sf_lsoa11, 
   title = 'RA9 - Torbay And South Devon NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RA9
-ggsave('./output/maps/map_RA9.png', map_RA9, height = 210, width = 297, units = 'mm')
 
-map_RA9 <- fnMap(
+map_RA9_zoomed <- fnMap(
   sel_org_code = 'RA9', sf = sf_lsoa11, 
   title = 'RA9 - Torbay And South Devon NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
+
+ggsave('./output/maps/map_RA9.png', map_RA9, height = 210, width = 297, units = 'mm')
+ggsave('./output/maps/map_RA9_zoomed.png', map_RA9_zoomed, height = 210, width = 297, units = 'mm')
 map_RA9
-ggsave('./output/maps/map_RA9_zoomed.png', map_RA9, height = 210, width = 297, units = 'mm')
+map_RA9_zoomed
 ```
 
 ### RBZ	- Northern Devon Healthcare NHS Trust			
-```{r catchment_RBZ, echo = FALSE}
+```{r catchment_RBZ}
 map_RBZ <- fnMap(
   sel_org_code = 'RBZ', sf = sf_lsoa11, 
   title = 'RBZ - Northern Devon Healthcare NHS Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RBZ
-ggsave('./output/maps/map_RBZ.png', map_RBZ, height = 210, width = 297, units = 'mm')
 
-map_RBZ <- fnMap(
+map_RBZ_zoomed <- fnMap(
   sel_org_code = 'RBZ', sf = sf_lsoa11, 
   title = 'RBZ - Northern Devon Healthcare NHS Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
+
+ggsave('./output/maps/map_RBZ.png', map_RBZ, height = 210, width = 297, units = 'mm')
+ggsave('./output/maps/map_RBZ_zoomed.png', map_RBZ_zoomed, height = 210, width = 297, units = 'mm')
 map_RBZ
-ggsave('./output/maps/map_RBZ_zoomed.png', map_RBZ, height = 210, width = 297, units = 'mm')
+map_RBZ_zoomed
 ```
 
 ### RH8	- Royal Devon And Exeter NHS Foundation Trust			
-```{r catchment_RH8, echo = FALSE}
+```{r catchment_RH8}
 map_RH8 <- fnMap(
   sel_org_code = 'RH8', sf = sf_lsoa11, 
   title = 'RH8 - Royal Devon And Exeter NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RH8
-ggsave('./output/maps/map_RH8.png', map_RH8, height = 210, width = 297, units = 'mm')
 
-map_RH8 <- fnMap(
+map_RH8_zoomed <- fnMap(
   sel_org_code = 'RH8', sf = sf_lsoa11, 
   title = 'RH8 - Royal Devon And Exeter NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
-map_RH8
-ggsave('./output/maps/map_RH8_zoomed.png', map_RH8, height = 210, width = 297, units = 'mm')
 
+ggsave('./output/maps/map_RH8.png', map_RH8, height = 210, width = 297, units = 'mm')
+ggsave('./output/maps/map_RH8_zoomed.png', map_RH8_zoomed, height = 210, width = 297, units = 'mm')
+map_RH8
+map_RH8_zoomed
 ```
 
 ### RH5	- Somerset NHS Foundation Trust
-```{r catchment_RH5, echo = FALSE}
+```{r catchment_RH5}
 map_RH5 <- fnMap(
   sel_org_code = 'RH5', sf = sf_lsoa11, 
   title = 'RH5 - Somerset NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RH5
-ggsave('./output/maps/map_RH5.png', map_RH5, height = 210, width = 297, units = 'mm')
 
-map_RH5 <- fnMap(
+map_RH5_zoomed <- fnMap(
   sel_org_code = 'RH5', sf = sf_lsoa11, 
   title = 'RH5 - Somerset NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
+
+ggsave('./output/maps/map_RH5.png', map_RH5, height = 210, width = 297, units = 'mm')
+ggsave('./output/maps/map_RH5_zoomed.png', map_RH5_zoomed, height = 210, width = 297, units = 'mm')
 map_RH5
-ggsave('./output/maps/map_RH5_zoomed.png', map_RH5, height = 210, width = 297, units = 'mm')
+map_RH5_zoomed
 ```
 
 ### RA4	- Yeovil District Hospital NHS Foundation Trust			
-```{r catchment_RA4, echo = FALSE}
+```{r catchment_RA4}
 map_RA4 <- fnMap(
   sel_org_code = 'RA4', sf = sf_lsoa11, 
   title = 'RA4 - Yeovil District Hospital NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = FALSE
 )
-map_RA4
-ggsave('./output/maps/map_RA4.png', map_RA4, height = 210, width = 297, units = 'mm')
 
-map_RA4 <- fnMap(
+map_RA4_zoomed <- fnMap(
   sel_org_code = 'RA4', sf = sf_lsoa11, 
   title = 'RA4 - Yeovil District Hospital NHS Foundation Trust\n(Elective and Non-Elective)',
   zoomed = TRUE
 )
-map_RA4
+
+ggsave('./output/maps/map_RA4.png', map_RA4, height = 210, width = 297, units = 'mm')
 ggsave('./output/maps/map_RA4_zoomed.png', map_RA4, height = 210, width = 297, units = 'mm')
+map_RA4
+map_RA4_zoomed
 ```
 
 ## Summary deprivation table 
@@ -339,27 +344,37 @@ df <- df_data %>%
   ungroup() %>% 
   pivot_wider(id_cols = 1:2, names_from = 3, values_from = 4:5, values_fill = 0)
 ```
+
 ### Population volume
 ```{r population_table}
-knitr::kable(df %>% 
+df_table <- df %>% 
                filter(org_code %in% df_local_trusts$org_code) %>% 
                mutate(total_popn = rowSums(.[3:12])) %>%
                select(c(1:12,23)) %>%
                mutate(core20 = rowSums(.[3:4])) %>%
-               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', 'Decile 1<br>(Most Deprived)', 'Decile<br>2' , 'Decile<br>3', 'Decile<br>4', 'Decile<br>5', 'Decile<br>6', 'Decile<br>7', 'Decile<br>8', 'Decile<br>9', 'Decile 10<br>(Least Deprived)', 'Total<br>Population', 'Core 20')}),
+               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', 'Decile 1<br>(Most Deprived)', 'Decile<br>2' , 'Decile<br>3', 'Decile<br>4', 'Decile<br>5', 'Decile<br>6', 'Decile<br>7', 'Decile<br>8', 'Decile<br>9', 'Decile 10<br>(Least Deprived)', 'Total<br>Population', 'Core 20')})
+
+write.csv(df_table, './output/population.csv', row.names = FALSE)
+
+knitr::kable(df_table,
   format.args = list(big.mark = ",", scientific = FALSE),
   caption = 'Acute Trust Catchment Areas Population Table')
+
 ```
 
 ### Percentage of Catchment Population
 ```{r percentage_table}
-knitr::kable(df %>% 
+df_table <- df %>% 
                filter(org_code %in% df_local_trusts$org_code) %>% 
                mutate(total_popn = rowSums(.[3:12])) %>%
                select(c(1:2,13:22)) %>%
                mutate(core20 = rowSums(.[3:4])) %>%
                mutate(across(.cols = 3:13, .fns = function(x){round(x*100,1)})) %>%
-               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', '% Decile 1<br>(Most Deprived)', '% Decile<br>2' , '% Decile<br>3', '% Decile<br>4', '% Decile<br>5', '% Decile<br>6', '% Decile<br>7', '% Decile<br>8', '% Decile<br>9', '% Decile 10<br>(Least Deprived)', 'Core 20')}),
+               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', '% Decile 1<br>(Most Deprived)', '% Decile<br>2' , '% Decile<br>3', '% Decile<br>4', '% Decile<br>5', '% Decile<br>6', '% Decile<br>7', '% Decile<br>8', '% Decile<br>9', '% Decile 10<br>(Least Deprived)', 'Core 20')})
+
+write.csv(df_table, './output/percentage_of_catchment.csv', row.names = FALSE)
+
+knitr::kable(df_table,
   format.args = list(big.mark = ",", scientific = FALSE),
   caption = 'Acute Trust Catchment Areas Percentage of Catchment Population Table')
 ```
