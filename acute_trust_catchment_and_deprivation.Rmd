@@ -1,0 +1,365 @@
+---
+title: "Acute Trust Catchment and Deprivation Analysis"
+author: "Richard Blackwell"
+date: '2023-05-30'
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    css: "style.css"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(forcats)
+library(sf)
+library(rgdal)
+library(huxtable)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+fnMap <- function(sel_org_code, sf, title, zoomed){
+  map <- ggplot(sf_lsoa11 %>% filter(org_code %in% sel_org_code)) %+% 
+    theme_void(base_size = 12) %+%
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.caption = element_text(hjust = 0)
+    ) %+%
+    labs(
+      title = title, 
+      caption = 'Source: Office for National Statistics licensed under the Open Government Licence v.3.0\nContains OS data © Crown copyright and database right 2023'
+    ) %+%
+    geom_sf(aes(fill = factor(imd_decile, levels = c(1:10))), linewidth = .1, color = NA)
+    if(zoomed){
+        map <- map %+% geom_sf(data = sf_lsoa11 %>% filter(org_code == sel_org_code) %>% group_by(org_code) %>% summarise(), fill = NA, linewidth = .1)
+    } else {
+        map <- map %+% geom_sf(data = sf_lsoa11 %>% group_by(org_code) %>% summarise(), fill = NA, linewidth = .1)
+    }
+  map <- map %+% 
+    geom_point(data = df_local_trusts %>% filter(org_code %in% sel_org_code), aes(x = longitude, y = latitude), shape = 1, size = 3, color = 'royalblue') %+%  
+    geom_point(data = df_local_trusts %>% filter(org_code %in% sel_org_code), aes(x = longitude, y = latitude), shape = 16, size = 1.5, color = 'royalblue') %+%
+    scale_fill_brewer(name = 'IMD 2019 Decile', type = 'div', palette = 'RdYlGn', drop=FALSE)
+  return(map)
+}
+```
+
+# Data
+
+The data used for the Acute Trust Catchment and Deprivation Analysis are as follows
+
+1. Office for Health Improvements and Disparities (OHID) - Acute Hospital Catchment Populations<br>[**Webpage:** Catchment Outputs](https://app.box.com/s/qh8gzpzeo1firv1ezfxx2e6c4tgtrudl)<br>**File:** 2022 Trust Catchment Populations_Supplementary MSOA Analysis.xlsx (no direct link available)
+
+2. GOV.UK - Indices of Multiple Deprivation (IMD) 2019 Scores, Ranks and Deciles for Domains and Sub-domains at Lower-layer Super Output Area (LSOA) 2011<br>[**Webpage:** English indices of deprivation 2019](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019)<br>[**File:** File 7 all ranks, deciles and scores for the indices of deprivation, and population denominators](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/845345/File_7_-_All_IoD2019_Scores__Ranks__Deciles_and_Population_Denominators_3.csv)
+
+3. Open Geography Portal - Output Area (OA) to Lower (LSOA) and Middle-layer Super Output Areas (MSOA)<br>[**Webpage:** Output Area Lookups (2011)](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=-created&tags=all(LUP_OA))<br>[**File:** Output Area to Lower layer Super Output Area to Middle layer Super Output Area to Local Authority District (December 2011) Lookup in England and Wales](https://geoportal.statistics.gov.uk/datasets/ons::output-area-to-lower-layer-super-output-area-to-middle-layer-super-output-area-to-local-authority-district-december-2011-lookup-in-england-and-wales-1/explore)NB: Select **Download CSV** from the download options
+
+4. Open Geography Portal - Lower-layer Super Output Areas (LSOA) 2011 Boundaries<br>[**Webpage:** Output Areas - 2011 Boundaries](https://geoportal.statistics.gov.uk/search?collection=Dataset&sort=name&tags=all(BDY_LSOA%2CDEC_2011))<br>[**File:** LSOA (Dec 2011) Boundaries Generalised Clipped BGC EW V3](https://geoportal.statistics.gov.uk/datasets/ons::lsoa-dec-2011-boundaries-generalised-clipped-bgc-ew-v3-2/explore)<br>NB: Select **Download Shapefile** from the download options
+
+5. Local Acute Trusts Location - Provided with code
+
+```{r load_data, include=FALSE}
+# Load the IMD 2019 data
+# ----------------------
+df_imd <- read.csv('./data/File_7_-_All_IoD2019_Scores__Ranks__Deciles_and_Population_Denominators_3.csv') %>%
+  rename_with(.fn = function(x){c('lsoa11cd', 'lsoa11nm', 'lad19cd', 'lad19nm',
+                 'imd_score', 'imd_rank', 'imd_decile',
+                 'income_score', 'income_rank', 'income_decile',
+                 'employment_score', 'employment_rank', 'employment_decile',
+                 'education_and_skills_score', 'education_and_skills_rank', 'education_and_skills_decile',
+                 'health_score', 'health_rank', 'health_decile',
+                 'crime_score', 'crime_rank', 'crime_decile',
+                 'housing_and_service_score', 'housing_and_service_rank', 'housing_and_service_decile',
+                 'living_environment_score', 'living_environment_rank', 'living_environment_decile',
+                 'sub_idaci_score', 'sub_idaci_rank', 'sub_idaci_decile',
+                 'sub_idopi_score', 'sub_idopi_rank', 'sub_idopi_decile',
+                 'sub_children_and_young_people_score', 'sub_children_and_young_people_rank', 'sub_children_and_young_people_decile',
+                 'sub_adult_skills_score', 'sub_adult_skills_rank', 'sub_adult_skills_decile',
+                 'sub_geographical_barrier_score', 'sub_geographical_barrier_rank', 'sub_geographical_barrier_decile',
+                 'sub_wider_barriers_score', 'sub_wider_barriers_rank', 'sub_wider_barriers_decile',
+                 'sub_indoor_environment_score', 'sub_indoor_environment_rank', 'sub_indoor_environment_decile',
+                 'sub_outdoor_environment_score', 'sub_outdoor_environment_rank', 'sub_outdoor_environment',
+                 'popn_total', 'popn_00_15_age', 'popn_16_59_age', 'popn_60_plus_age', 'popn_working_age')})
+
+# Load the PHE Trust Catchment Data
+# ---------------------------------
+df_catchment <- read_excel(path = './data/2022 Trust Catchment Populations_Supplementary MSOA Analysis.xlsx', sheet = 'All Admissions') %>%
+  rename_with(.fn = function(x){c(
+    'data_year', 'adm_type', 'msoa11cd', 
+    'org_code', 'org_name', 
+    'patients', 'total_patients', 'pct_of_patients', 
+    'trust_catchment_popn', 'msoa_catchment_popn', 'fptp', 'pct_category'
+  )})
+
+df_catchment_el <- read_excel(path = './data/2022 Trust Catchment Populations_Supplementary MSOA Analysis.xlsx', sheet = 'Elective') %>%
+  rename_with(.fn = function(x){c(
+    'data_year', 'adm_type', 'msoa11cd', 
+    'org_code', 'org_name', 
+    'patients', 'total_patients', 'pct_of_patients', 
+    'trust_catchment_popn', 'msoa_catchment_popn', 'fptp', 'pct_category'
+  )})
+
+df_catchment_nel <- read_excel(path = './data/2022 Trust Catchment Populations_Supplementary MSOA Analysis.xlsx', sheet = 'Emergency') %>%
+  rename_with(.fn = function(x){c(
+    'data_year', 'adm_type', 'msoa11cd', 
+    'org_code', 'org_name', 
+    'patients', 'total_patients', 'pct_of_patients', 
+    'trust_catchment_popn', 'msoa_catchment_popn', 'fptp', 'pct_category'
+  )})
+
+# Load the Output Area 2011 Lookups
+# ---------------------------------
+df_oa11_lu <- read.csv('./data/Output_Area_to_Lower_layer_Super_Output_Area_to_Middle_layer_Super_Output_Area_to_Local_Authority_District_(December_2011)_Lookup_in_England_and_Wales.csv') %>%
+  rename_with(.fn = function(x){c(
+    'oa11cd', 
+    'lsoa11cd', 'lsoa11nm',
+    'msoa11cd', 'msoa11nm',
+    'lad11cd', 'lad11nm',
+    'lad11nmw', 'object_id')})
+
+# Load the Lower-layer Super Output Area 2011 Boundaries
+# ------------------------------------------------------
+sf_lsoa11 <- st_read(dsn = './data', layer = 'LSOA_2011_EW_BGC_V3') %>%
+  st_transform(crs = 4326)
+
+# Load the local acute trust locations
+# ------------------------------------
+df_local_trusts <- read.csv('./data/local_acute_trusts.csv')
+```
+
+## Process data
+
+Filter and trim datasets
+
++ Catchment Data
+  + Filter to only include 2020 data and to First Past The Past (FPTP) entries (i.e. assigning the MSOA to the Trust that has the highest proportion of patients from that MSOA)
+  + Only the MSOA, Organisation and 
++ IMD Data
+  + Filtered to only include English LSOAs as the OHID Acute Trust Catchment Areas data only includes English MSOAs
+  + Only the overall IMD decile and total population data will be used in this analysis
++ OA to LSOA to MSOA lookup
+  + Filtered to only include English output areas as the OHID Acute Trust Catchment Areas data only includes English MSOAs
+  + Only the LSOA and MSOA data will be used in this analysis
++ LSOA Boundaries
+  + Filtered to only include English LSOAs and MSOAs as the OHID Acute Trust Catchment Areas data only includes English MSOAs
+  
+Join the catchment data to IMD data using intermediate join to LSOA to MSOA lookup and create the percentage of catchment population based on IMD 2019 total population at LSOA level
+
+Join to the LSOA boundaries for mapping
+```{r process_data}
+# Catchment data filter
+df_catchment <- df_catchment %>% filter(data_year == 2020 & fptp == TRUE)
+
+# IMD data filter and select required fields
+df_imd <- df_imd %>% filter(grepl('^E', lsoa11cd)) %>% select(lsoa11cd, imd_decile, popn_total)
+
+# OA to LSOA to MSOA - filter and select distinct LSOAs and MSOAs
+df_oa11_lu <- df_oa11_lu %>% filter(grepl('^E', lsoa11cd)) %>% distinct(lsoa11cd, msoa11cd)
+
+# LSOA boundaries filter
+sf_lsoa11 <- sf_lsoa11 %>% filter(grepl('^E', LSOA11CD))
+
+# Join Catchment data to LSOA to MSOA lookup
+df_data <- df_catchment %>% 
+  left_join(df_oa11_lu, by = 'msoa11cd') %>%
+  # and then to IMD data...
+  left_join(df_imd, by = 'lsoa11cd') %>% 
+  # select only the fields that will be used
+  select(org_code, org_name, pct_of_patients, lsoa11cd, imd_decile, popn_total) %>%
+  # create the pct_of_catchment
+  group_by(org_code, org_name) %>% 
+  mutate(pct_of_catchment = popn_total/sum(popn_total)) %>%
+  ungroup()
+
+# Join data to LSOA boundaries for mapping
+sf_lsoa11 <- sf_lsoa11 %>% left_join(df_data, by = c('LSOA11CD' = 'lsoa11cd'))
+```
+
+## Local Acute Trust Catchment Areas
+```{r catchment_setup, echo = FALSE}
+# Filter for the local trusts
+sf_lsoa11 <- sf_lsoa11 %>% filter(org_code %in% c('RA4','RA9','RBZ','REF','RH5','RH8','RK9'))
+dir.create('./output/maps', showWarnings = FALSE, recursive = TRUE)
+
+map_ALL <- fnMap(
+  sel_org_code = c('RA4','RA9','RBZ','REF','RH5','RH8','RK9'), sf = sf_lsoa11, 
+  title = 'South West AHSN Acute Trust Catchment Areas\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_ALL
+ggsave('./output/maps/map_ALL.png', map_ALL, height = 210, width = 297, units = 'mm')
+```
+
+### REF - Royal Cornwall Hospitals NHS Trust
+```{r catchment_REF, echo = FALSE}
+map_REF <- fnMap(
+  sel_org_code = 'REF', sf = sf_lsoa11, 
+  title = 'REF - Royal Cornwall Hospitals NHS Trust Catchment Area\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_REF
+ggsave('./output/maps/map_REF.png', map_REF, height = 210, width = 297, units = 'mm')
+
+map_REF <- fnMap(
+  sel_org_code = 'REF', sf = sf_lsoa11, 
+  title = 'REF - Royal Cornwall Hospitals NHS Trust Catchment Area\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_REF
+ggsave('./output/maps/map_REF_zoomed.png', map_REF, height = 210, width = 297, units = 'mm')
+```
+### RK9	- University Hospitals Plymouth NHS Trust			
+```{r catchment_RK9, echo = FALSE}
+map_RK9 <- fnMap(
+  sel_org_code = 'RK9', sf = sf_lsoa11, 
+  title = 'RK9 - University Hospitals Plymouth NHS Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RK9
+ggsave('./output/maps/map_RK9.png', map_RK9, height = 210, width = 297, units = 'mm')
+
+map_RK9 <- fnMap(
+  sel_org_code = 'RK9', sf = sf_lsoa11, 
+  title = 'RK9 - University Hospitals Plymouth NHS Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RK9
+ggsave('./output/maps/map_RK9_zoomed.png', map_RK9, height = 210, width = 297, units = 'mm')
+```
+
+### RA9	- Torbay And South Devon NHS Foundation Trust			
+```{r catchment_RA9, echo = FALSE}
+map_RA9 <- fnMap(
+  sel_org_code = 'RA9', sf = sf_lsoa11, 
+  title = 'RA9 - Torbay And South Devon NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RA9
+ggsave('./output/maps/map_RA9.png', map_RA9, height = 210, width = 297, units = 'mm')
+
+map_RA9 <- fnMap(
+  sel_org_code = 'RA9', sf = sf_lsoa11, 
+  title = 'RA9 - Torbay And South Devon NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RA9
+ggsave('./output/maps/map_RA9_zoomed.png', map_RA9, height = 210, width = 297, units = 'mm')
+```
+
+### RBZ	- Northern Devon Healthcare NHS Trust			
+```{r catchment_RBZ, echo = FALSE}
+map_RBZ <- fnMap(
+  sel_org_code = 'RBZ', sf = sf_lsoa11, 
+  title = 'RBZ - Northern Devon Healthcare NHS Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RBZ
+ggsave('./output/maps/map_RBZ.png', map_RBZ, height = 210, width = 297, units = 'mm')
+
+map_RBZ <- fnMap(
+  sel_org_code = 'RBZ', sf = sf_lsoa11, 
+  title = 'RBZ - Northern Devon Healthcare NHS Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RBZ
+ggsave('./output/maps/map_RBZ_zoomed.png', map_RBZ, height = 210, width = 297, units = 'mm')
+```
+
+### RH8	- Royal Devon And Exeter NHS Foundation Trust			
+```{r catchment_RH8, echo = FALSE}
+map_RH8 <- fnMap(
+  sel_org_code = 'RH8', sf = sf_lsoa11, 
+  title = 'RH8 - Royal Devon And Exeter NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RH8
+ggsave('./output/maps/map_RH8.png', map_RH8, height = 210, width = 297, units = 'mm')
+
+map_RH8 <- fnMap(
+  sel_org_code = 'RH8', sf = sf_lsoa11, 
+  title = 'RH8 - Royal Devon And Exeter NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RH8
+ggsave('./output/maps/map_RH8_zoomed.png', map_RH8, height = 210, width = 297, units = 'mm')
+
+```
+
+### RH5	- Somerset NHS Foundation Trust
+```{r catchment_RH5, echo = FALSE}
+map_RH5 <- fnMap(
+  sel_org_code = 'RH5', sf = sf_lsoa11, 
+  title = 'RH5 - Somerset NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RH5
+ggsave('./output/maps/map_RH5.png', map_RH5, height = 210, width = 297, units = 'mm')
+
+map_RH5 <- fnMap(
+  sel_org_code = 'RH5', sf = sf_lsoa11, 
+  title = 'RH5 - Somerset NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RH5
+ggsave('./output/maps/map_RH5_zoomed.png', map_RH5, height = 210, width = 297, units = 'mm')
+```
+
+### RA4	- Yeovil District Hospital NHS Foundation Trust			
+```{r catchment_RA4, echo = FALSE}
+map_RA4 <- fnMap(
+  sel_org_code = 'RA4', sf = sf_lsoa11, 
+  title = 'RA4 - Yeovil District Hospital NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = FALSE
+)
+map_RA4
+ggsave('./output/maps/map_RA4.png', map_RA4, height = 210, width = 297, units = 'mm')
+
+map_RA4 <- fnMap(
+  sel_org_code = 'RA4', sf = sf_lsoa11, 
+  title = 'RA4 - Yeovil District Hospital NHS Foundation Trust\n(Elective and Non-Elective)',
+  zoomed = TRUE
+)
+map_RA4
+ggsave('./output/maps/map_RA4_zoomed.png', map_RA4, height = 210, width = 297, units = 'mm')
+```
+
+## Summary deprivation table 
+```{r summary_table, include = FALSE}
+df <- df_data %>% 
+  group_by(org_code, org_name, imd_decile) %>% 
+  summarise(
+    popn_total = sum(popn_total), 
+    pct_of_catchment = sum(pct_of_catchment), 
+    .groups = 'keep'
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(id_cols = 1:2, names_from = 3, values_from = 4:5, values_fill = 0)
+```
+### Population volume
+```{r population_table}
+knitr::kable(df %>% 
+               filter(org_code %in% df_local_trusts$org_code) %>% 
+               mutate(total_popn = rowSums(.[3:12])) %>%
+               select(c(1:12,23)) %>%
+               mutate(core20 = rowSums(.[3:4])) %>%
+               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', 'Decile 1<br>(Most Deprived)', 'Decile<br>2' , 'Decile<br>3', 'Decile<br>4', 'Decile<br>5', 'Decile<br>6', 'Decile<br>7', 'Decile<br>8', 'Decile<br>9', 'Decile 10<br>(Least Deprived)', 'Total<br>Population', 'Core 20')}),
+  format.args = list(big.mark = ",", scientific = FALSE),
+  caption = 'Acute Trust Catchment Areas Population Table')
+```
+
+### Percentage of Catchment Population
+```{r percentage_table}
+knitr::kable(df %>% 
+               filter(org_code %in% df_local_trusts$org_code) %>% 
+               mutate(total_popn = rowSums(.[3:12])) %>%
+               select(c(1:2,13:22)) %>%
+               mutate(core20 = rowSums(.[3:4])) %>%
+               mutate(across(.cols = 3:13, .fns = function(x){round(x*100,1)})) %>%
+               rename_with(.fn = function(x){c('Org.<br>Code', 'Org.<br>Name', '% Decile 1<br>(Most Deprived)', '% Decile<br>2' , '% Decile<br>3', '% Decile<br>4', '% Decile<br>5', '% Decile<br>6', '% Decile<br>7', '% Decile<br>8', '% Decile<br>9', '% Decile 10<br>(Least Deprived)', 'Core 20')}),
+  format.args = list(big.mark = ",", scientific = FALSE),
+  caption = 'Acute Trust Catchment Areas Percentage of Catchment Population Table')
+```
